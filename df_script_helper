@@ -1,0 +1,51 @@
+#!/bin/bash
+df_data=/usr/share/df_linux/data
+df_loc=/usr/share/df_linux
+user_name=$1
+cd /home/dwarf
+
+# check if the user's directory exists
+if [ ! -d $user_name ]
+then
+	mkdir $user_name
+fi
+cd $user_name
+
+# check if custom dirs exist, if they do not create them
+if [ ! -d .df ]
+then
+	mkdir .df
+fi
+cd .df
+if [ ! -d data ]
+then
+	mkdir data
+	cp -r $df_data/* data
+fi
+
+# ensure that the symlinks don't already exist, if they do, delete them
+if [ -a libs ]
+then
+	rm libs
+fi
+if [ -a raw ]
+then
+	rm raw
+fi
+if [ -a g_src ]
+then
+	rm g_src
+fi
+if [ -a  sdl ]
+then
+	rm sdl
+fi
+	
+ln -s $df_loc/libs libs || ( echo "Error mounting libs" ; exit 1 )
+ln -s $df_loc/raw raw || ( echo "Error mounting raw" ; exit 1 )
+ln -s $df_loc/g_src || ( echo "Error mounting g_src" ; exit 1 )
+ln -s $df_loc/sdl || ( echo "Error mounting sdl" ; exit 1 )
+
+# Start the main executable, and remove all created symlinks once it
+# terminates
+./libs/Dwarf_Fortress ; rm -f libs raw g_src sdl
