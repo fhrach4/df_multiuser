@@ -2,6 +2,8 @@
 
 import sqlite3
 import sys
+import getpass
+import hashlib
 import MySQLdb as mdb
 
 from subprocess import call
@@ -10,23 +12,33 @@ from subprocess import call
 CON = None
 
 def login():
+	print "Enter blank username to cancel"
 	call(["clear"])
 	good = False
 	cur = CON.cursor()
 
 	while not good:
-		userName = raw_input("Username> ")
+		userName = raw_input("Username: ")
 
-		call(["clear"])
+		# exit back to main menu if user enters no username
+		if userName == "":
+			break
+		passwd = getpass.getpass()
 
-		passwd = raw_input("Password> ")
-
+		# get data from mysql
 		cur.execute( "select * from dfusers where name='" + userName + "'")
-
 		data = cur.fetchall()
 		if data == ():
 			print "incorrect login information provided"
-		elif passwd == data[0][1]:
+
+		# hash the remote password
+		remotePasswordHash = data[0][1]
+
+		# hash the local password
+		localPasswordHash = hashlib.md5()
+		localPasswordHash.update( passwd )
+
+		if localPasswordHash.digest() == remotePasswordHash:
 			result = call(["sh", "/usr/share/df_linux/df_script_helper", userName])
 			good = True
 		else:
@@ -36,6 +48,7 @@ def createAccount():
 	call(["clear"])
 	good = False
 	cur = CON.cursor()
+	passwd = None
 
 	while not good:
 		print "Enter a username with no special characters or spaces"
@@ -52,22 +65,26 @@ def createAccount():
 
 		# check if username is not already in use
 		if not uname in users:
-			print "Enter a password, this will be stored with no encryption"
-			passwd = raw_input("> ")
+			print "Enter a password"
+			passwd1 = getpass.getpass()
 			print "Enter the password again"
-			passwd2 = raw_input("> ")
+			passwd2 = getpass.getpass()
 			# handle non-matching passwords
-			if not passwd2 == passwd:
-				print "The password did not match, try again"
+			if not passwd2 == passwd1:
+				print "The passwords did not match, try again"
 			else:
 				good = True
+				# hash the passwords
+				passwd = hashlib.md5()
+				passwd.update(passwd1)
+
 		else:
 			good = False;
 			print "Username already exists"
 
 	# if the data was good, add it to the db
 	if( good ):
-		cur.execute("insert into dfusers (name, password) values ('" + uname + "','" + passwd + "')")
+		cur.execute("insert into dfusers (name, password) values ('" + uname + "','" + passwd.digest() + "')")
 
 def quit():
 	call(["clear"])
